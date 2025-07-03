@@ -1,0 +1,33 @@
+services:
+  geet:
+    build: .
+    container_name: geet
+    ports:
+      - "8009:8080"
+    depends_on:
+      - db
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mariadb://db:3306/geet
+      SPRING_DATASOURCE_USERNAME: geet
+      SPRING_DATASOURCE_PASSWORD: password
+    volumes:
+      - ./data/geet-repos:/var/git-repos
+    networks:
+      - gitnet
+
+  db:
+    image: mariadb:11
+    container_name: geet-db
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: password
+      MARIADB_DATABASE: geet
+      MARIADB_USER: geet
+      MARIADB_PASSWORD: password
+    volumes:
+      - ./data/db_data:/var/lib/mysql
+    networks:
+      - gitnet
+
+networks:
+  gitnet:
