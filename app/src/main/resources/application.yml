@@ -1,0 +1,22 @@
+spring:
+  datasource:
+    url: jdbc:mariadb://localhost:3306/geet
+    username: geet
+    password: password
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+logging:
+  level:
+    root: WARN
+    pl.doleckijakub: DEBUG
+  pattern:
+#    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    console: "%d{yy-MM-dd HH:mm:ss} %-5level %msg%n"
+server:
+  servlet:
+    session:
+      cookie:
+        same-site: Strict
+        secure: true

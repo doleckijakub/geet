@@ -24,7 +24,14 @@ dependencies {
     implementation(libs.guava)
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    implementation("org.mariadb.jdbc:mariadb-java-client:3.5.4")
+    implementation("org.springframework.boot:spring-boot-starter-security")
+    implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
+    implementation("org.springframework.session:spring-session-core")
+    implementation("org.mindrot:jbcrypt:0.4")
+    implementation("org.flywaydb:flyway-core")
+    implementation("org.flywaydb:flyway-mysql")
+
+    runtimeOnly("org.mariadb.jdbc:mariadb-java-client")
 
     testImplementation(libs.junit.jupiter)
     testImplementation("org.springframework.boot:spring-boot-starter-test")

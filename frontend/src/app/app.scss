@@ -1,0 +1,18 @@
+.app {
+  font-family: sans-serif;
+  margin: 2rem;
+
+  form {
+    display: flex;
+    flex-direction: column;
+    max-width: 300px;
+
+    input, button {
+      margin-bottom: 0.5rem;
+    }
+  }
+
+  button {
+    cursor: pointer;
+  }
+}

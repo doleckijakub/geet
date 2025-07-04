@@ -1,22 +1,6 @@
 services:
-  geet:
-    build: .
-    container_name: geet
-    ports:
-      - "8009:8080"
-    depends_on:
-      - db
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:mariadb://db:3306/geet
-      SPRING_DATASOURCE_USERNAME: geet
-      SPRING_DATASOURCE_PASSWORD: password
-    volumes:
-      - ./data/geet-repos:/var/git-repos
-    networks:
-      - gitnet
-
   db:
-    image: mariadb:11
+    image: mariadb:10
     container_name: geet-db
     restart: unless-stopped
     environment:
@@ -24,8 +8,35 @@ services:
       MARIADB_DATABASE: geet
       MARIADB_USER: geet
       MARIADB_PASSWORD: password
+    healthcheck:
+      test: [ "CMD", "healthcheck.sh", "--connect" ]
+      interval: 3s
+      timeout: 2s
+      retries: 10
     volumes:
       - ./data/db_data:/var/lib/mysql
+    networks:
+      - gitnet
+
+  geet:
+    build: .
+    container_name: geet
+    ports:
+      - "8009:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '16'
+    environment:
+      GRADLE_OPTS: -Dorg.gradle.workers.max=${WORKERS_MAX:-4} -Dorg.gradle.parallel=true
+      SPRING_DATASOURCE_URL: jdbc:mariadb://db:3306/geet
+      SPRING_DATASOURCE_USERNAME: geet
+      SPRING_DATASOURCE_PASSWORD: password
+    volumes:
+      - ./data/geet-repos:/var/git-repos
     networks:
       - gitnet
 
