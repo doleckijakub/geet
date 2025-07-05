@@ -1,38 +1,54 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClientModule } from '@angular/common/http';
-import { AuthService } from './auth.service';
+import { RouterOutlet } from '@angular/router';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+
+import { AuthStore } from './auth/auth-store';
+import { LoadingStore } from './shared/loading-store';
 
 @Component({
-selector: 'app-root',
-standalone: true,
-imports: [
-CommonModule,
-HttpClientModule,  // ✅ Add this
-],
-templateUrl: './app.html',
-styleUrl: './app.scss',
-providers: [AuthService]
-})
-export class AppComponent {
-  auth = inject(AuthService);
+  selector: 'app-root',
+  standalone: true,
+  imports: [
+    CommonModule,
+    RouterOutlet,
+    MatProgressSpinnerModule
+  ],
+  template: `
+  <div class="app">
+    @if (loadingStore.isLoading()) {
+      <div class="loader">
+        <mat-spinner></mat-spinner>
+      </div>
+    } @else {
+      <router-outlet />
+    }
+  </div>
+  `,
+  styles: `
+  .app {
+    font-family: sans-serif;
+    margin: 2rem;
 
-  login(event: Event) {
-    event.preventDefault();
-    const form = event.target as HTMLFormElement;
-    const username = (form['username'] as HTMLInputElement).value;
-    const password = (form['password'] as HTMLInputElement).value;
-    this.auth.login(username, password).subscribe({
-      next: () => {
-        this.auth.refreshStatus();
-      },
-      error: (err) => {
-        console.error('Login failed:', err);
+    form {
+      display: flex;
+      flex-direction: column;
+      max-width: 300px;
+      input, button {
+        margin-bottom: 0.5rem;
       }
-    });
-  }
+    }
 
-  logout() {
-    this.auth.logout().subscribe();
+    button {
+      cursor: pointer;
+    }
   }
+  `,
+  providers: [
+    
+  ]
+})
+export class App {
+  protected readonly authStore = inject(AuthStore);
+  protected readonly loadingStore = inject(LoadingStore);
 }

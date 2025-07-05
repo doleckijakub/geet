@@ -3,6 +3,7 @@ package pl.doleckijakub.geet.controller;
 import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.websocket.servlet.UndertowWebSocketServletWebServerCustomizer;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -11,6 +12,7 @@ import pl.doleckijakub.geet.model.User;
 import pl.doleckijakub.geet.repository.UserRepository;
 
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api")
@@ -26,60 +28,97 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody Map<String, String> body) {
+    public ResponseEntity<Map<String, ?>> register(@RequestBody Map<String, String> body) {
         String username = body.get("username");
         String password = body.get("password");
 
         if (username == null || password == null || username.isBlank() || password.length() < 6) {
-            return ResponseEntity.badRequest().body("Invalid input");
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "error", "Invalid credentials"
+            ));
         }
 
         if (userRepository.findByUsername(username).isPresent()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("Username taken");
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                    "success", false,
+                    "error", "Username taken"
+            ));
         }
 
-        var newUser = new User();
+        User newUser = new User();
         newUser.setUsername(username);
         newUser.setPasswordHash(passwordEncoder.encode(password));
         newUser.setAdmin(false);
 
         userRepository.save(newUser);
 
-        logger.info("User {{ id: {}, username: {} }} registered", newUser.getId(), newUser.getUsername());
+        logger.info("User {} registered with id {}", newUser.getUsername(), newUser.getId());
 
-        return ResponseEntity.ok("Registered");
+        return ResponseEntity.ok(Map.of("success", true));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody Map<String, String> login,
-                                   HttpSession session) {
-        var user = userRepository.findByUsername(login.get("username"));
-        if (user.isEmpty() || !passwordEncoder.matches(login.get("password"), user.get().getPasswordHash())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
+    public ResponseEntity<Map<String, ?>> login(@RequestBody Map<String, String> login, HttpSession session) {
+        String username = login.get("username");
+        String password = login.get("password");
+
+        if (username == null || password == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+                    "success", false,
+                    "error", "Username or password not provided"
+            ));
         }
 
-        session.setAttribute("user", user.get().getUsername());
+        Optional<User> user = userRepository.findByUsername(username);
 
-        logger.info("User {{ id: {}, username: {} }} logged in", user.get().getId(), user.get().getUsername());
+        if (user.isEmpty() || !passwordEncoder.matches(password, user.get().getPasswordHash())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
+                    "success", false,
+                    "error", "Invalid credentials"
+            ));
+        }
 
-        return ResponseEntity.ok("Logged in");
+        String db_username = user.get().getUsername();
+
+        session.setAttribute("user", db_username);
+
+        logger.info("User {} logged in", db_username);
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "username", db_username
+        ));
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(HttpSession session) {
+    public ResponseEntity<Map<String, ?>> logout(HttpSession session) {
         String username = (String) session.getAttribute("user");
 
-        logger.info("User {{ username: {} }} logged out", username);
+        if (username == null) return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "error", "Not logged in"
+        ));
+
+        logger.info("User {} logged out", username);
 
         session.invalidate();
 
-        return ResponseEntity.ok("Logged out");
+        return ResponseEntity.ok(Map.of("success", true));
     }
 
     @GetMapping("/auth-status")
-    public ResponseEntity<?> status(HttpSession session) {
+    public ResponseEntity<Map<String, ?>> status(HttpSession session) {
         String username = (String) session.getAttribute("user");
-        if (username != null) return ResponseEntity.ok(Map.of("username", username));
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Not logged in"));
+
+        if (username == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
+                "success", false,
+                "error", "Not logged in"
+        ));
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "username", username
+        ));
     }
 }

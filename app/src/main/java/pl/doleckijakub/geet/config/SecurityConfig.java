@@ -19,7 +19,12 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/",
-                                "/index.html",
+                                "/register",
+                                "/login",
+                                "/home",
+                                "/index.html"
+                        ).permitAll()
+                        .requestMatchers(
                                 "/favicon.ico",
                                 "/main-*.js",
                                 "/polyfills-*.js",
@@ -36,7 +41,9 @@ public class SecurityConfig {
                 )
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
-                .sessionManagement(sessionManagement -> sessionManagement.maximumSessions(1));
+                .sessionManagement(sessionManagement ->
+                        sessionManagement.maximumSessions(1)
+                );
 
         return http.build();
     }
