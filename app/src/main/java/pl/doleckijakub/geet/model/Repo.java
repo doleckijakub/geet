@@ -1,7 +1,6 @@
 package pl.doleckijakub.geet.model;
 
 import jakarta.persistence.*;
-import pl.doleckijakub.geet.config.GitConfig;
 
 import java.io.File;
 import java.io.Serializable;

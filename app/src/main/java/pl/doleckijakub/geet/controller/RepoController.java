@@ -4,7 +4,6 @@ import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pl.doleckijakub.geet.model.Repo;
@@ -14,7 +13,7 @@ import pl.doleckijakub.geet.repository.*;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Map;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/repo")
@@ -128,5 +127,28 @@ public class RepoController {
         return ResponseEntity.ok().body(Map.of(
                 "success", true
         ));
+    }
+
+    @GetMapping
+    public ResponseEntity<Map<String, ?>> get(@RequestBody Map<String, String> body) {
+        Map<String, Object> responseBody = new HashMap<>();
+
+        responseBody.put("success", true);
+
+        List<String> publicRepos = repoRepository
+                .findAll()
+                .stream()
+                .filter(repo -> repo.getVisibility().getName().equals("public"))
+                .map(repo -> String.format(
+                        Locale.ENGLISH,
+                        "@%s/%s",
+                        repo.getUser().getUsername(),
+                        repo.getName()
+                ))
+                .toList();
+
+        responseBody.put("repositories", publicRepos);
+
+        return ResponseEntity.ok().body(responseBody);
     }
 }
