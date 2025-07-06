@@ -37,6 +37,22 @@ services:
       SPRING_DATASOURCE_PASSWORD: password
     volumes:
       - ./data/geet-repos:/var/git-repos
+    develop:
+      watch:
+        - action: rebuild
+          path: ./frontend
+          ignore:
+            - node_modules/
+            - dist/
+            - .angular/
+        - action: rebuild
+          path: ./app
+        - action: rebuild
+          path: build.gradle.kts
+        - action: rebuild
+          path: settings.gradle.kts
+        - action: rebuild
+          path: ./gradle
     networks:
       - gitnet
 

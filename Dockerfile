@@ -23,8 +23,6 @@ RUN ./gradlew --no-daemon --parallel --refresh-dependencies dependencies
 
 COPY app/ ./app
 
-COPY --from=frontend-builder /frontend/dist/frontend/browser/ ./app/src/main/resources/static/
-
 RUN ./gradlew --no-daemon --parallel --max-workers=$(nproc) build
 RUN cp app/build/libs/app-0.1.0.jar geet.jar
 
@@ -36,6 +34,7 @@ RUN apk update
 RUN apk add --no-cache git
 RUN rm -rf /var/cache/apk/*
 
+COPY --from=frontend-builder /frontend/dist/frontend/browser/ ./static/
 COPY --from=backend-builder /geet/geet.jar ./geet.jar
 
 EXPOSE 8080
