@@ -3,7 +3,6 @@ package pl.doleckijakub.geet.controller;
 import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.websocket.servlet.UndertowWebSocketServletWebServerCustomizer;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -15,56 +14,25 @@ import java.util.Map;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api")
-public class AuthController {
-    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
+@RequestMapping("/api/session")
+public class SessionController {
+    private static final Logger LOGGER = LoggerFactory.getLogger(SessionController.class);
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public AuthController(UserRepository repo, PasswordEncoder enc) {
+    public SessionController(UserRepository repo, PasswordEncoder enc) {
         this.userRepository = repo;
         this.passwordEncoder = enc;
     }
 
-    @PostMapping("/register")
-    public ResponseEntity<Map<String, ?>> register(@RequestBody Map<String, String> body) {
-        String username = body.get("username");
-        String password = body.get("password");
-
-        if (username == null || password == null || username.isBlank() || password.length() < 6) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "error", "Invalid credentials"
-            ));
-        }
-
-        if (userRepository.findByUsername(username).isPresent()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
-                    "success", false,
-                    "error", "Username taken"
-            ));
-        }
-
-        User newUser = new User();
-        newUser.setUsername(username);
-        newUser.setPasswordHash(passwordEncoder.encode(password));
-        newUser.setAdmin(false);
-
-        userRepository.save(newUser);
-
-        logger.info("User {} registered with id {}", newUser.getUsername(), newUser.getId());
-
-        return ResponseEntity.ok(Map.of("success", true));
-    }
-
-    @PostMapping("/login")
+    @PostMapping
     public ResponseEntity<Map<String, ?>> login(@RequestBody Map<String, String> login, HttpSession session) {
         String username = login.get("username");
         String password = login.get("password");
 
         if (username == null || password == null) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+            return ResponseEntity.badRequest().body(Map.of(
                     "success", false,
                     "error", "Username or password not provided"
             ));
@@ -83,7 +51,7 @@ public class AuthController {
 
         session.setAttribute("user", db_username);
 
-        logger.info("User {} logged in", db_username);
+        LOGGER.info("User {} logged in", db_username);
 
         return ResponseEntity.ok(Map.of(
                 "success", true,
@@ -91,7 +59,7 @@ public class AuthController {
         ));
     }
 
-    @PostMapping("/logout")
+    @DeleteMapping
     public ResponseEntity<Map<String, ?>> logout(HttpSession session) {
         String username = (String) session.getAttribute("user");
 
@@ -100,14 +68,14 @@ public class AuthController {
                 "error", "Not logged in"
         ));
 
-        logger.info("User {} logged out", username);
+        LOGGER.info("User {} logged out", username);
 
         session.invalidate();
 
         return ResponseEntity.ok(Map.of("success", true));
     }
 
-    @GetMapping("/auth-status")
+    @GetMapping
     public ResponseEntity<Map<String, ?>> status(HttpSession session) {
         String username = (String) session.getAttribute("user");
 

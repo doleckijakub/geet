@@ -32,10 +32,9 @@ public class SecurityConfig {
                                 "/styles-*.css"
                         ).permitAll()
                         .requestMatchers(
-                                "/api/register",
-                                "/api/login",
-                                "/api/logout",
-                                "/api/auth-status"
+                                "/api/account",
+                                "/api/session",
+                                "/api/repo"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

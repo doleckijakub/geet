@@ -27,23 +27,23 @@ export class AuthStore {
   }
 
   register(credentials: Credentials): Observable<BasicResponse> {
-    return this.http.post<BasicResponse>('/api/register', credentials);
+    return this.http.put<BasicResponse>('/api/account', credentials);
   }
 
   login(credentials: Credentials): Observable<ResponseWithUsername> {
-    return this.http.post<ResponseWithUsername>('/api/login', credentials).pipe(
+    return this.http.post<ResponseWithUsername>('/api/session', credentials).pipe(
       tap(response => this.username.set(response.username ?? null))
     );
   }
 
   logout(): Observable<BasicResponse> {
-    return this.http.post<BasicResponse>('/api/logout', {}).pipe(
+    return this.http.delete<BasicResponse>('/api/session', {}).pipe(
       tap(() => this.username.set(null))
     );
   }
 
   getAuthStatus(): Observable<ResponseWithUsername> {
-    return this.http.get<ResponseWithUsername>('/api/auth-status').pipe(
+    return this.http.get<ResponseWithUsername>('/api/session').pipe(
       tap(response => this.username.set(response.username ?? null))
     );
   }

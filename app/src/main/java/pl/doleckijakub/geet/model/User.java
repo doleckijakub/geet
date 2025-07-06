@@ -1,6 +1,9 @@
 package pl.doleckijakub.geet.model;
 
 import jakarta.persistence.*;
+import pl.doleckijakub.geet.config.GitConfig;
+
+import java.io.File;
 
 @Entity
 @Table(name = "users")
@@ -9,11 +12,13 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true)
+    @Column(unique = true, nullable = false)
     private String username;
 
+    @Column(nullable = false)
     private String passwordHash;
 
+    @Column(name = "is_admin", nullable = false)
     private boolean isAdmin;
 
     public Long getId() {
@@ -41,6 +46,12 @@ public class User {
     }
 
     public void setAdmin(boolean admin) {
-        isAdmin = admin;
+        this.isAdmin = admin;
+    }
+
+    ///
+
+    public File getReposLocation() {
+        return new File(GitConfig.REPO_LOCATION_BASE, getUsername());
     }
 }
