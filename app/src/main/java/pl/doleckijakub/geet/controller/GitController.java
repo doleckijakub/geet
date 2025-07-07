@@ -10,20 +10,20 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StreamUtils;
 import org.springframework.web.bind.annotation.*;
+import pl.doleckijakub.geet.command.GitCommand;
 import pl.doleckijakub.geet.model.Repo;
-import pl.doleckijakub.geet.model.User;
 import pl.doleckijakub.geet.repository.RepoRepository;
 import pl.doleckijakub.geet.repository.UserRepository;
-
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.util.Optional;
+
+import org.apache.tomcat.util.codec.binary.Base64;
 
 @RestController
 public class GitController {
     private static final Logger LOGGER = LoggerFactory.getLogger(GitController.class);
+    private static final String AUTH_TOKEN = "12345678";
 
     private final UserRepository userRepository;
     private final RepoRepository repoRepository;
@@ -34,58 +34,149 @@ public class GitController {
     }
 
     private Optional<Repo> getRepo(String username, String repoName) {
-        Optional<User> userOpt = userRepository.findByUsername(username);
-        if (userOpt.isEmpty()) return Optional.empty();
-
-        User user = userOpt.get();
-
-        return repoRepository.findByUserAndName(user, repoName);
+        return userRepository.findByUsername(username)
+                .flatMap(user -> repoRepository.findByUserAndName(user, repoName));
     }
 
-    @RequestMapping(
-            value = {
-                    "/@{username}/{repoName}.git/info/refs",
-                    "/@{username}/{repoName}/info/refs",
-            },
-            method = RequestMethod.GET,
-            produces = MediaType.APPLICATION_OCTET_STREAM_VALUE
-    )
-    public ResponseEntity<byte[]> handleInfoRefs(
+    private boolean isAuthorized(String header) {
+        if (header == null || !header.startsWith("Basic ")) return false;
+        String base64 = header.substring(6).trim();
+        String decoded = new String(Base64.decodeBase64(base64));
+        // expected: "anyusername:12345678"
+        return decoded.endsWith(":" + AUTH_TOKEN);
+    }
+
+    @GetMapping({
+            "/@{username}/{repoName}.git/info/refs",
+            "/@{username}/{repoName}/info/refs"
+    })
+    public ResponseEntity<byte[]> getGitInfoRefs(
             @PathVariable String username,
             @PathVariable String repoName,
-            @RequestParam(name = "service", required = false) String service
-    ) throws IOException {
-        if (!service.equals("git-upload-pack")) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Unsupported service".getBytes());
+            @RequestParam(name = "service", required = false) String service,
+            @RequestHeader(value = "Authorization", required = false) String authHeader
+    ) throws Exception {
+        if (service == null || !service.startsWith("git-")) {
+            return ResponseEntity.badRequest().build();
         }
+
+        String serviceName = service.substring(4);
 
         Optional<Repo> repoOpt = getRepo(username, repoName);
-        if (repoOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
-        }
+        if (repoOpt.isEmpty()) return ResponseEntity.notFound().build();
         Repo repo = repoOpt.get();
-        if (!repo.getVisibility().getName().equals("public")) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(null);
+
+        if (!repo.getVisibility().getName().equals("public") && !isAuthorized(authHeader)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        File repoPath = repo.getRepoLocation();
+        GitCommand command = new GitCommand(
+                repo.getRepoLocation(),
+                serviceName, "--stateless-rpc", "--advertise-refs", "."
+        );
 
-        ProcessBuilder pb = new ProcessBuilder("git", "upload-pack", "--stateless-rpc", "--advertise-refs", ".");
-        pb.directory(repoPath);
-        Process process = pb.start();
-        byte[] gitOutput = StreamUtils.copyToByteArray(process.getInputStream());
+        command.start();
+        command.waitFor();
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-
-        out.write("001e# service=git-upload-pack\n".getBytes());
-        out.write("0000".getBytes());
-        out.write(gitOutput);
+        {
+            String firstLine = String.format("# service=git-%s\n0000", serviceName);
+            firstLine = String.format("%04x%s", firstLine.length(), firstLine);
+            out.write(firstLine.getBytes());
+        }
+        out.write(command.readAllStdout());
 
         HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.parseMediaType("application/x-git-upload-pack-advertisement"));
+        headers.setContentType(MediaType.parseMediaType(String.format("application/x-git-%s-advertisement", serviceName)));
         headers.set("Cache-Control", "no-cache");
 
         return new ResponseEntity<>(out.toByteArray(), headers, HttpStatus.OK);
+    }
+
+    @PostMapping({
+            "/@{username}/{repoName}.git/git-receive-pack",
+            "/@{username}/{repoName}/git-receive-pack"
+    })
+    public ResponseEntity<byte[]> postGitReceivePack(
+            @PathVariable String username,
+            @PathVariable String repoName,
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestBody byte[] requestBody
+    ) throws IOException, InterruptedException {
+        Optional<Repo> repoOpt = getRepo(username, repoName);
+        if (repoOpt.isEmpty()) return ResponseEntity.notFound().build();
+        Repo repo = repoOpt.get();
+
+        if (!repo.getVisibility().getName().equals("public") && !isAuthorized(authHeader)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        GitCommand command = new GitCommand(
+                repo.getRepoLocation(),
+                "receive-pack", "--stateless-rpc", "."
+        );
+
+        command.start();
+
+        command.writeToStdin(requestBody);
+        command.closeStdin();
+
+        byte[] responseBytes = command.readAllStdout();
+
+        int exitCode = command.waitFor();
+        if (exitCode != 0) {
+            LOGGER.error("'{}' exited with exit code {}: {}", command, exitCode, "ERROR"); // TODO: read error from stderr
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType("application/x-git-receive-pack-result"));
+        headers.set("Cache-Control", "no-cache");
+
+        return new ResponseEntity<>(responseBytes, headers, HttpStatus.OK);
+    }
+
+    @PostMapping({
+            "/@{username}/{repoName}.git/git-upload-pack",
+            "/@{username}/{repoName}/git-upload-pack"
+    })
+    public ResponseEntity<byte[]> postGitUploadPack(
+            @PathVariable String username,
+            @PathVariable String repoName,
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestBody byte[] requestBody
+    ) throws IOException, InterruptedException {
+        Optional<Repo> repoOpt = getRepo(username, repoName);
+        if (repoOpt.isEmpty()) return ResponseEntity.notFound().build();
+        Repo repo = repoOpt.get();
+
+        if (!repo.getVisibility().getName().equals("public") && !isAuthorized(authHeader)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        GitCommand command = new GitCommand(
+                repo.getRepoLocation(),
+                "upload-pack", "--stateless-rpc", "."
+        );
+
+        command.start();
+
+        command.writeToStdin(requestBody);
+        command.closeStdin();
+
+        byte[] responseBytes = command.readAllStdout();
+
+        int exitCode = command.waitFor();
+        if (exitCode != 0) {
+            LOGGER.error("'{}' exited with exit code {}: {}", command, exitCode, "ERROR"); // TODO: read error from stderr
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType("application/x-git-receive-pack-result"));
+        headers.set("Cache-Control", "no-cache");
+
+        return new ResponseEntity<>(responseBytes, headers, HttpStatus.OK);
     }
 
     @RequestMapping(
@@ -98,18 +189,15 @@ public class GitController {
     public ResponseEntity<byte[]> handleGitFile(
             @PathVariable String username,
             @PathVariable String repoName,
-            HttpServletRequest request
+            HttpServletRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authHeader
     ) throws IOException {
-        LOGGER.debug("{} {}", request.getMethod(), request.getRequestURI());
-
         Optional<Repo> repoOpt = getRepo(username, repoName);
-        if (repoOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
-        }
+        if (repoOpt.isEmpty()) return ResponseEntity.notFound().build();
         Repo repo = repoOpt.get();
 
-        if (!repo.getVisibility().getName().equals("public")) { // TODO: handle non-public repos
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(null);
+        if (!repo.getVisibility().getName().equals("public") && !isAuthorized(authHeader)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
         String fullPath = request.getRequestURI().replaceFirst("^/@" + username + "/" + repoName + "(\\.git)?", "");
@@ -117,14 +205,12 @@ public class GitController {
         File targetFile = new File(repoBase, fullPath);
 
         if (!targetFile.getCanonicalPath().startsWith(repoBase.getCanonicalPath())) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
 
         if (!targetFile.exists() || !targetFile.isFile()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
-
-        LOGGER.info("{} {}", request.getMethod(), request.getRequestURI());
 
         MediaType contentType = MediaType.APPLICATION_OCTET_STREAM;
         try {

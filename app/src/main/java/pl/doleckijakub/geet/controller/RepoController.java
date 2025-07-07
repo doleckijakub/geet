@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import pl.doleckijakub.geet.command.GitCommand;
 import pl.doleckijakub.geet.model.Repo;
 import pl.doleckijakub.geet.model.RepoVisibility;
 import pl.doleckijakub.geet.model.User;
@@ -44,16 +45,9 @@ public class RepoController {
             throw new IOException("Failed to create repository directory: " + repoLocation.getAbsolutePath());
         }
 
-        ProcessBuilder pb = new ProcessBuilder("git", "init", "--bare");
-        pb.directory(repoLocation);
-        pb.redirectErrorStream(true);
-
-        Process process = pb.start();
-        int exitCode = process.waitFor();
-
-        if (exitCode != 0) {
-            throw new IOException("git init --bare failed with exit code: " + exitCode);
-        }
+        GitCommand command = new GitCommand(repoLocation, "init", "--bare");
+        command.start();
+        command.waitFor();
 
         File headFile = new File(repoLocation, "HEAD");
         if (!headFile.exists()) {

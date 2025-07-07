@@ -26,7 +26,8 @@ import { take } from 'rxjs';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <mat-toolbar class="toolbar">
-      <span>Geet</span>
+      <!-- <span>Geet</span> -->
+      <img src="/favicon.ico" style="width: 48px;" />
       <button matIconButton [matMenuTriggerFor]="menu">
         <mat-icon>more_vert</mat-icon>
       </button>
