@@ -101,6 +101,13 @@ public class RepoController {
             ));
         }
 
+        if (name.endsWith(".git")) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "error", "Repository name cannot end with .git"
+            ));
+        }
+
         if (repoRepository.findByUserAndName(user, name).isPresent()) {
             return ResponseEntity.badRequest().body(Map.of(
                     "success", false,
