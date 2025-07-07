@@ -5,25 +5,27 @@ import { Observable, tap, finalize } from 'rxjs';
 import { Credentials } from './interfaces/credentials';
 import { BasicResponse } from './interfaces/basic-response';
 import { ResponseWithUsername } from './interfaces/response-with-username';
-import { LoadingStore } from '../shared/loading-store';
+import { LoadingStore } from '../shared/data-access/loading-store';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class AuthStore {
+  private http = inject(HttpClient);
+  private loadingStore = inject(LoadingStore);
   username = signal<string | null>(null);
 
-  private loadingStore = inject(LoadingStore);
-
-  constructor(private http: HttpClient) {
+  constructor() {
     this.loadingStore.showLoader();
 
-    this.getAuthStatus().pipe(
-      tap(response => this.username.set(response.username ?? null)),
-      finalize(() => this.loadingStore.hideLoader())
-    ).subscribe({
-      error: () => this.username.set(null)
-    });
+    this.getAuthStatus()
+      .pipe(
+        tap((response) => this.username.set(response.username ?? null)),
+        finalize(() => this.loadingStore.hideLoader())
+      )
+      .subscribe({
+        error: () => this.username.set(null),
+      });
   }
 
   register(credentials: Credentials): Observable<BasicResponse> {
@@ -31,20 +33,20 @@ export class AuthStore {
   }
 
   login(credentials: Credentials): Observable<ResponseWithUsername> {
-    return this.http.post<ResponseWithUsername>('/api/session', credentials).pipe(
-      tap(response => this.username.set(response.username ?? null))
-    );
+    return this.http
+      .post<ResponseWithUsername>('/api/session', credentials)
+      .pipe(tap((response) => this.username.set(response.username ?? null)));
   }
 
   logout(): Observable<BasicResponse> {
-    return this.http.delete<BasicResponse>('/api/session', {}).pipe(
-      tap(() => this.username.set(null))
-    );
+    return this.http
+      .delete<BasicResponse>('/api/session', {})
+      .pipe(tap(() => this.username.set(null)));
   }
 
   getAuthStatus(): Observable<ResponseWithUsername> {
-    return this.http.get<ResponseWithUsername>('/api/session').pipe(
-      tap(response => this.username.set(response.username ?? null))
-    );
+    return this.http
+      .get<ResponseWithUsername>('/api/session')
+      .pipe(tap((response) => this.username.set(response.username ?? null)));
   }
 }

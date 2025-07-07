@@ -10,7 +10,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ReactiveFormsModule, FormBuilder } from '@angular/forms';
 
 import { Credentials } from '../interfaces/credentials';
@@ -23,7 +22,6 @@ import { Credentials } from '../interfaces/credentials';
     MatFormFieldModule,
     MatInputModule,
     MatIconModule,
-    MatProgressSpinnerModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -53,11 +51,7 @@ import { Credentials } from '../interfaces/credentials';
       </mat-form-field>
 
       @if (registerStatus()==='error') {
-        <mat-error>Could not log you in with those details.</mat-error>
-      }
-      
-      @if (registerStatus() === 'loading') {
-        <mat-spinner diameter="50"></mat-spinner>
+      <mat-error>Could not log you in with those details.</mat-error>
       }
 
       <button
