@@ -17,25 +17,26 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/",
-                                "/register",
-                                "/login",
-                                "/home",
-                                "/index.html"
-                        ).permitAll()
-                        .requestMatchers(
-                                "/favicon.ico",
-                                "/main-*.js",
-                                "/polyfills-*.js",
-                                "/runtime-*.js",
-                                "/styles-*.css"
-                        ).permitAll()
-                        .requestMatchers(
-                                "/api/account",
-                                "/api/session",
-                                "/api/repo"
-                        ).permitAll()
+                        .requestMatchers("/**").permitAll()
+//                        .requestMatchers(
+//                                "/",
+//                                "/register",
+//                                "/login",
+//                                "/home",
+//                                "/index.html"
+//                        ).permitAll()
+//                        .requestMatchers(
+//                                "/favicon.ico",
+//                                "/main-*.js",
+//                                "/polyfills-*.js",
+//                                "/runtime-*.js",
+//                                "/styles-*.css"
+//                        ).permitAll()
+//                        .requestMatchers(
+//                                "/api/account",
+//                                "/api/session",
+//                                "/api/repo"
+//                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .formLogin(AbstractHttpConfigurer::disable)
