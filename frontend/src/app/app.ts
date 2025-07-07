@@ -4,49 +4,38 @@ import { RouterOutlet } from '@angular/router';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 import { AuthStore } from './auth/auth-store';
-import { LoadingStore } from './shared/loading-store';
+import { LoadingStore } from './shared/data-access/loading-store';
+import { Toolbar } from './shell/toolbar';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [
-    CommonModule,
-    RouterOutlet,
-    MatProgressSpinnerModule
-  ],
+  imports: [CommonModule, RouterOutlet, MatProgressSpinnerModule, Toolbar],
   template: `
-  <div class="app">
-    @if (loadingStore.isLoading()) {
+    <app-toolbar></app-toolbar>
+    <div class="app">
+      @if (loadingStore.isLoading()) {
       <div class="loader">
         <mat-spinner></mat-spinner>
       </div>
-    } @else {
+      } @else {
       <router-outlet />
-    }
-  </div>
+      }
+    </div>
   `,
   styles: `
-  .app {
-    font-family: sans-serif;
-    margin: 2rem;
-
-    form {
+    .loader {
+      position: fixed;
+      z-index: 9999;
+      width: 100%;
+      height: 30%;
       display: flex;
-      flex-direction: column;
-      max-width: 300px;
-      input, button {
-        margin-bottom: 0.5rem;
-      }
+      align-items: center;
+      justify-content: center;
+      background-color: var(--color-background);
     }
-
-    button {
-      cursor: pointer;
-    }
-  }
   `,
-  providers: [
-    
-  ]
+  providers: [],
 })
 export class App {
   protected readonly authStore = inject(AuthStore);

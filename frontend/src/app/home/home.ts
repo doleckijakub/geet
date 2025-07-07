@@ -7,15 +7,13 @@ import { AuthStore } from '../auth/auth-store';
   template: `
     <div class="home">
       @if(authStore.username() === null) {
-        <span>Not Logged in</span>
+      <span>Not Logged in</span>
       } @else {
-        <span>Logged in as &#64;{{ authStore.username() }}</span>
+      <span>Logged in as &#64;{{ authStore.username() }}</span>
       }
     </div>
   `,
 })
 export default class Home {
   public authStore = inject(AuthStore);
-
-  constructor() {}
 }
