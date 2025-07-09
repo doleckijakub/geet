@@ -49,7 +49,7 @@ public class HttpLogFilter implements Filter {
                 int status = cachingResponse.getStatus();
                 int responseSize = cachingResponse.getContentSize();
 
-                LOGGER.info("{} - {} {}", formatRequest(httpRequest), status, responseSize);
+                LOGGER.debug("{} - {} {}", formatRequest(httpRequest), status, responseSize);
 
                 cachingResponse.copyBodyToResponse();
             }

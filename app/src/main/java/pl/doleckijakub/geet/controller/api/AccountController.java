@@ -1,4 +1,4 @@
-package pl.doleckijakub.geet.controller;
+package pl.doleckijakub.geet.controller.api;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

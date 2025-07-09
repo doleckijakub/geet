@@ -14,3 +14,16 @@ export const isAuthenticatedGuard = (): CanActivateFn => {
     return router.parseUrl('login');
   };
 };
+
+export const isNotAuthenticatedGuard = (): CanActivateFn => {
+  return () => {
+    const authStore = inject(AuthStore);
+    const router = inject(Router);
+
+    if (!authStore.username()) {
+      return true;
+    }
+
+    return router.parseUrl('home');
+  };
+};

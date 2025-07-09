@@ -1,24 +1,21 @@
 package pl.doleckijakub.geet.controller;
 
-import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.util.StreamUtils;
 import org.springframework.web.bind.annotation.*;
 import pl.doleckijakub.geet.command.GitCommand;
 import pl.doleckijakub.geet.model.Repo;
+import pl.doleckijakub.geet.model.RepoVisibility;
 import pl.doleckijakub.geet.repository.RepoRepository;
 import pl.doleckijakub.geet.repository.UserRepository;
-import java.io.*;
-import java.nio.file.Files;
-import java.util.Optional;
+import pl.doleckijakub.geet.util.ByteStringConverter;
 
-import org.apache.tomcat.util.codec.binary.Base64;
+import java.io.*;
+import java.util.Optional;
 
 @RestController
 public class GitController {
@@ -41,7 +38,7 @@ public class GitController {
     private boolean isAuthorized(String header) {
         if (header == null || !header.startsWith("Basic ")) return false;
         String base64 = header.substring(6).trim();
-        String decoded = new String(Base64.decodeBase64(base64));
+        String decoded = new String(ByteStringConverter.fromBase64(base64));
         // expected: "anyusername:12345678"
         return decoded.endsWith(":" + AUTH_TOKEN);
     }
@@ -66,7 +63,7 @@ public class GitController {
         if (repoOpt.isEmpty()) return ResponseEntity.notFound().build();
         Repo repo = repoOpt.get();
 
-        if (!repo.getVisibility().getName().equals("public") && !isAuthorized(authHeader)) {
+        if (repo.getVisibility() != RepoVisibility.PUBLIC && !isAuthorized(authHeader)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
@@ -107,7 +104,7 @@ public class GitController {
         if (repoOpt.isEmpty()) return ResponseEntity.notFound().build();
         Repo repo = repoOpt.get();
 
-        if (!repo.getVisibility().getName().equals("public") && !isAuthorized(authHeader)) {
+        if (repo.getVisibility() != RepoVisibility.PUBLIC && !isAuthorized(authHeader)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
@@ -150,7 +147,7 @@ public class GitController {
         if (repoOpt.isEmpty()) return ResponseEntity.notFound().build();
         Repo repo = repoOpt.get();
 
-        if (!repo.getVisibility().getName().equals("public") && !isAuthorized(authHeader)) {
+        if (repo.getVisibility() != RepoVisibility.PUBLIC && !isAuthorized(authHeader)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
@@ -179,49 +176,50 @@ public class GitController {
         return new ResponseEntity<>(responseBytes, headers, HttpStatus.OK);
     }
 
-    @RequestMapping(
-            value = {
-                    "/@{username}/{repoName}.git/**",
-                    "/@{username}/{repoName}/**"
-            },
-            method = {RequestMethod.GET, RequestMethod.POST}
-    )
-    public ResponseEntity<byte[]> handleGitFile(
-            @PathVariable String username,
-            @PathVariable String repoName,
-            HttpServletRequest request,
-            @RequestHeader(value = "Authorization", required = false) String authHeader
-    ) throws IOException {
-        Optional<Repo> repoOpt = getRepo(username, repoName);
-        if (repoOpt.isEmpty()) return ResponseEntity.notFound().build();
-        Repo repo = repoOpt.get();
-
-        if (!repo.getVisibility().getName().equals("public") && !isAuthorized(authHeader)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
-        String fullPath = request.getRequestURI().replaceFirst("^/@" + username + "/" + repoName + "(\\.git)?", "");
-        File repoBase = repo.getRepoLocation();
-        File targetFile = new File(repoBase, fullPath);
-
-        if (!targetFile.getCanonicalPath().startsWith(repoBase.getCanonicalPath())) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-        }
-
-        if (!targetFile.exists() || !targetFile.isFile()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        }
-
-        MediaType contentType = MediaType.APPLICATION_OCTET_STREAM;
-        try {
-            contentType = MediaType.parseMediaType(Files.probeContentType(targetFile.toPath()));
-        } catch (Exception ignored) {}
-
-        byte[] data = StreamUtils.copyToByteArray(new FileSystemResource(targetFile).getInputStream());
-
-        return ResponseEntity.ok()
-                .contentType(contentType)
-                .contentLength(data.length)
-                .body(data);
-    }
+    // TODO: uncomment or remove
+//    @RequestMapping(
+//            value = {
+//                    "/@{username}/{repoName}.git/**",
+//                    "/@{username}/{repoName}/**"
+//            },
+//            method = {RequestMethod.GET, RequestMethod.POST}
+//    )
+//    public ResponseEntity<byte[]> handleGitFile(
+//            @PathVariable String username,
+//            @PathVariable String repoName,
+//            HttpServletRequest request,
+//            @RequestHeader(value = "Authorization", required = false) String authHeader
+//    ) throws IOException {
+//        Optional<Repo> repoOpt = getRepo(username, repoName);
+//        if (repoOpt.isEmpty()) return ResponseEntity.notFound().build();
+//        Repo repo = repoOpt.get();
+//
+//        if (repo.getVisibility() != RepoVisibility.PUBLIC && !isAuthorized(authHeader)) {
+//            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+//        }
+//
+//        String fullPath = request.getRequestURI().replaceFirst("^/@" + username + "/" + repoName + "(\\.git)?", "");
+//        File repoBase = repo.getRepoLocation();
+//        File targetFile = new File(repoBase, fullPath);
+//
+//        if (!targetFile.getCanonicalPath().startsWith(repoBase.getCanonicalPath())) {
+//            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+//        }
+//
+//        if (!targetFile.exists() || !targetFile.isFile()) {
+//            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+//        }
+//
+//        MediaType contentType = MediaType.APPLICATION_OCTET_STREAM;
+//        try {
+//            contentType = MediaType.parseMediaType(Files.probeContentType(targetFile.toPath()));
+//        } catch (Exception ignored) {}
+//
+//        byte[] data = StreamUtils.copyToByteArray(new FileSystemResource(targetFile).getInputStream());
+//
+//        return ResponseEntity.ok()
+//                .contentType(contentType)
+//                .contentLength(data.length)
+//                .body(data);
+//    }
 }

@@ -45,12 +45,4 @@ export default class Register {
   public registerStore = inject(RegisterStore);
   public authStore = inject(AuthStore);
   private router = inject(Router);
-
-  constructor() {
-    effect(() => {
-      if (this.authStore.username()) {
-        this.router.navigate(['home']);
-      }
-    });
-  }
 }

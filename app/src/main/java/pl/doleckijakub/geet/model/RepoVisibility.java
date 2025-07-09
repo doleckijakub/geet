@@ -1,30 +1,15 @@
 package pl.doleckijakub.geet.model;
 
-import jakarta.persistence.*;
-import java.io.Serializable;
+public enum RepoVisibility {
+    PUBLIC,
+    PRIVATE,
+    UNLISTED;
 
-@Entity
-@Table(name = "repo_visibilities")
-public class RepoVisibility implements Serializable {
+    public static RepoVisibility fromString(String sVisibility) {
+        for (RepoVisibility visibility : values())
+            if (sVisibility.toUpperCase().equals(visibility.toString()))
+                return visibility;
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Short id;
-
-    @Column(nullable = false, unique = true)
-    private String name;
-
-    public RepoVisibility() {}
-
-    public RepoVisibility(String name) {
-        this.name = name;
-    }
-
-    public Short getId() {
-        return id;
-    }
-
-    public String getName() {
-        return name;
+        return null;
     }
 }

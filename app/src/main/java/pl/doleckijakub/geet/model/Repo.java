@@ -22,8 +22,7 @@ public class Repo implements Serializable {
     @Column(nullable = false)
     private String name;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "visibility_id", nullable = false)
+    @Enumerated(EnumType.STRING)
     private RepoVisibility visibility;
 
     public Repo() {}
@@ -62,5 +61,9 @@ public class Repo implements Serializable {
 
     public File getRepoLocation() {
         return new File(getUser().getReposLocation(), getName() + ".git");
+    }
+
+    public String getDefaultBranchName() {
+        return "master";
     }
 }

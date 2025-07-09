@@ -45,12 +45,4 @@ export default class Login {
   public loginStore = inject(LoginStore);
   public authStore = inject(AuthStore);
   private router = inject(Router);
-
-  constructor() {
-    effect(() => {
-      if (this.authStore.username()) {
-        this.router.navigate(['home']);
-      }
-    });
-  }
 }

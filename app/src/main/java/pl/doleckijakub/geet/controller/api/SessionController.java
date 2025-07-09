@@ -1,4 +1,4 @@
-package pl.doleckijakub.geet.controller;
+package pl.doleckijakub.geet.controller.api;
 
 import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
